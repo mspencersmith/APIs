@@ -17,14 +17,38 @@ with open(path) as api_file:
 youtube = build('youtube', 'v3', developerKey=config['API_KEY'])
 
 channel_id = 'UChh-akEbUM8_6ghGVnJd6cQ'
-nextPageToken = None
+
 filename = 'data/bwf_playlists.csv'
 
-with open(filename, 'w') as csv_file:
-    csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(['publishedAt', 'title', 'description', 'id'])
 
-while True:
+
+def playlist():
+    """Creates csv file with playlist attributes"""
+    write_header()
+    nextPageToken=None
+    while True:
+        response = request_playlist(nextPageToken)
+
+        with open(filename, 'a', newline='') as csv_file:
+            csv_writer = csv.writer(csv_file)
+        
+            for item in response['items']:
+                publishedAt, title, description, id_ = get_attributes(item)
+                
+                csv_writer.writerow([publishedAt, title, description, id_])
+        
+        nextPageToken = response.get('nextPageToken')
+
+        if not nextPageToken:
+            break
+
+def write_header():
+    with open(filename, 'w') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(['publishedAt', 'title', 'description', 'id'])
+
+def request_playlist(nextPageToken):
+
     request = youtube.playlists().list(
         part = 'contentDetails, snippet',
         channelId = channel_id,
@@ -32,19 +56,14 @@ while True:
         pageToken = nextPageToken
         )
     response = request.execute()
+    return response
 
-    with open(filename, 'a', newline='') as csv_file:
-        csv_writer = csv.writer(csv_file)
-        for item in response['items']:
-            id_ = item['id']
-            snippet = item['snippet']
-            publishedAt = snippet['publishedAt']
-            title = snippet['title']
-            description = snippet['description']
-            
-            csv_writer.writerow([publishedAt, title, description, id_])
+def get_attributes(item):
+    snippet = item['snippet']
+    publishedAt = snippet['publishedAt']
+    title = snippet['title']
+    description = snippet['description']
+    id_ = item['id']
+    return publishedAt, title, description, id_
 
-    nextPageToken = response.get('nextPageToken')
-
-    if not nextPageToken:
-        break
+playlist()
