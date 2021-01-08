@@ -32,8 +32,7 @@ while True:
         pageToken = nextPageToken
         )
     response = request.execute()
-    # items = response['items']
-    # print(response)
+
     with open(filename, 'a', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         for item in response['items']:
