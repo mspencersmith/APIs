@@ -26,9 +26,7 @@ youtube = build('youtube', 'v3', developerKey=config['API_KEY'])
 
 channel_id = 'UChh-akEbUM8_6ghGVnJd6cQ'
 
-filename = 'data/bwf_playlists.csv'
-
-
+filename = 'data/bwf_playlists2.csv'
 
 def playlist():
     """Creates csv file with playlist attributes"""
@@ -56,35 +54,41 @@ def cal_duration(playlist_id):
     minutes_pattern = re.compile(r'(\d+)M')
     seconds_pattern = re.compile(r'(\d+)S')
 
-    total_seconds = 0
     nextPageToken = None
     while True:
         pl_response = request_playlistitems(playlist_id, nextPageToken)
         vid_response = request_videos(pl_response)
-
-        for item in vid_response['items']:
-            total = item['contentDetails']['duration']
-            hours = hours_pattern.search(total)
-            minutes = minutes_pattern.search(total)
-            seconds = seconds_pattern.search(total)
-
-            hours = int(hours.group(1)) if hours else 0
-            minutes = int(minutes.group(1)) if minutes else 0
-            seconds = int(seconds.group(1)) if seconds else 0
-
-            video_seconds = timedelta(
-                hours = hours,
-                minutes = minutes,
-                seconds =  seconds
-                ).total_seconds()
-
-            total_seconds += video_seconds
+        total_seconds = cal_seconds(vid_response, hours_pattern, minutes_pattern, seconds_pattern)
 
         nextPageToken = pl_response.get('nextPageToken')
 
         if not nextPageToken:
             break
+    duration = convert_seconds(total_seconds)
+    return duration
 
+def cal_seconds(vid_response, hours_pattern, minutes_pattern, seconds_pattern):
+    total_seconds = 0
+    for item in vid_response['items']:
+        total = item['contentDetails']['duration']
+        hours = hours_pattern.search(total)
+        minutes = minutes_pattern.search(total)
+        seconds = seconds_pattern.search(total)
+
+        hours = int(hours.group(1)) if hours else 0
+        minutes = int(minutes.group(1)) if minutes else 0
+        seconds = int(seconds.group(1)) if seconds else 0
+
+        video_seconds = timedelta(
+            hours = hours,
+            minutes = minutes,
+            seconds =  seconds
+            ).total_seconds()
+
+        total_seconds += video_seconds
+    return total_seconds
+
+def convert_seconds(total_seconds):
     total_seconds = int(total_seconds)
     minutes, seconds = divmod(total_seconds, 60)
     hours, minutes = divmod(minutes, 60)
@@ -138,9 +142,6 @@ def get_attributes(item):
     description = snippet['description']
     id_ = item['id']
     return publishedAt, title, description, id_
-
-
-
 
 playlist()
 
