@@ -4,9 +4,12 @@ Reuturns attributes of playlists
 import os.path
 import json
 import re
+import time
 from datetime import timedelta
 from googleapiclient.discovery import build
 from pathlib import Path
+
+start = time.time()
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -74,3 +77,7 @@ minutes, seconds = divmod(total_seconds, 60)
 hours, minutes = divmod(minutes, 60)
 
 print(f'{hours}:{minutes}:{seconds}')
+
+finish = time.time()
+mins = round((finish - start)/60, 2)
+print(f"\nTotal time taken {mins}")

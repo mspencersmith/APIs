@@ -1,13 +1,19 @@
 """
-Reuturns attributes of playlists 
+Reuturns attributes of a channels playlists: 
+
+publishedAt, title, description, id_, duration
 """
 import csv
 import os.path
 import json
 import re
+import time
+from tqdm import tqdm
 from datetime import timedelta
 from googleapiclient.discovery import build
 from pathlib import Path
+
+start = time.time()
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -20,7 +26,7 @@ youtube = build('youtube', 'v3', developerKey=config['API_KEY'])
 
 channel_id = 'UChh-akEbUM8_6ghGVnJd6cQ'
 
-filename = 'data/bwf_playlists2.csv'
+filename = 'data/bwf_playlists.csv'
 
 
 
@@ -34,8 +40,7 @@ def playlist():
         with open(filename, 'a', newline='') as csv_file:
             csv_writer = csv.writer(csv_file)
         
-            for item in response['items']:
-                # publishedAt, title, description, id_ = get_attributes(item)
+            for item in tqdm(response['items']):
                 publishedAt, title, description, id_ = get_attributes(item)
                 duration = cal_duration(id_)
                 csv_writer.writerow([publishedAt, title, description, id_, duration])
@@ -45,57 +50,17 @@ def playlist():
         if not nextPageToken:
             break
 
-def write_header():
-    with open(filename, 'w') as csv_file:
-        csv_writer = csv.writer(csv_file)
-        csv_writer.writerow(['publishedAt', 'title', 'description', 'id', 'duration'])
-
-def request_playlist(nextPageToken):
-
-    request = youtube.playlists().list(
-        part = 'contentDetails, snippet',
-        channelId = channel_id,
-        maxResults = 50,
-        pageToken = nextPageToken
-        )
-    response = request.execute()
-    return response
-
-def get_attributes(item):
-    snippet = item['snippet']
-    publishedAt = snippet['publishedAt']
-    title = snippet['title']
-    description = snippet['description']
-    id_ = item['id']
-    return publishedAt, title, description, id_
-
 def cal_duration(playlist_id):
-    nextPageToken = None
-
+    
     hours_pattern = re.compile(r'(\d+)H')
     minutes_pattern = re.compile(r'(\d+)M')
     seconds_pattern = re.compile(r'(\d+)S')
 
     total_seconds = 0
-
+    nextPageToken = None
     while True:
-        pl_request = youtube.playlistItems().list(
-            part = 'contentDetails',
-            playlistId = playlist_id,
-            maxResults = 50,
-            pageToken = nextPageToken
-            )
-        response = pl_request.execute()
-
-        vid_ids = []
-        for item in response['items']:
-            vid_ids.append(item['contentDetails']['videoId'])
-            
-        vid_request = youtube.videos().list(
-            part = "contentDetails",
-            id=','.join(vid_ids)
-            )
-        vid_response = vid_request.execute()
+        pl_response = request_playlistitems(playlist_id, nextPageToken)
+        vid_response = request_videos(pl_response)
 
         for item in vid_response['items']:
             total = item['contentDetails']['duration']
@@ -115,7 +80,7 @@ def cal_duration(playlist_id):
 
             total_seconds += video_seconds
 
-        nextPageToken = response.get('nextPageToken')
+        nextPageToken = pl_response.get('nextPageToken')
 
         if not nextPageToken:
             break
@@ -126,5 +91,59 @@ def cal_duration(playlist_id):
     duration = f'{hours}:{minutes}:{seconds}'
     return duration
 
+def write_header():
+
+    with open(filename, 'w') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(['publishedAt', 'title', 'description', 'id', 'duration'])
+
+def request_playlist(nextPageToken):
+
+    request = youtube.playlists().list(
+        part = 'contentDetails, snippet',
+        channelId = channel_id,
+        maxResults = 50,
+        pageToken = nextPageToken
+        )
+    response = request.execute()
+    return response
+
+def request_playlistitems(playlist_id, nextPageToken):
+    request = youtube.playlistItems().list(
+        part = 'contentDetails',
+        playlistId = playlist_id,
+        maxResults = 50,
+        pageToken = nextPageToken
+        )
+    response = request.execute()
+    return response
+
+def request_videos(pl_response):
+    vid_ids = []
+    for item in pl_response['items']:
+        vid_ids.append(item['contentDetails']['videoId'])
+        
+    vid_request = youtube.videos().list(
+        part = "contentDetails",
+        id=','.join(vid_ids)
+        )
+    vid_response = vid_request.execute()
+    return vid_response
+
+def get_attributes(item):
+
+    snippet = item['snippet']
+    publishedAt = snippet['publishedAt']
+    title = snippet['title']
+    description = snippet['description']
+    id_ = item['id']
+    return publishedAt, title, description, id_
+
+
+
 
 playlist()
+
+finish = time.time()
+mins = round((finish - start)/60, 2)
+print(f"\nTotal time taken {mins} minutes.")
