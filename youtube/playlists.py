@@ -146,5 +146,5 @@ def get_attributes(item):
 playlist()
 
 finish = time.time()
-mins = round((finish - start)/60, 2)
-print(f"\nTotal time taken {mins} minutes.")
+secs = round((finish - start), 2)
+print(f"\nTotal time taken {secs}s.")

@@ -1,12 +1,12 @@
 import csv
 import requests
 import time
-from operator import itemgetter
+from datetime import date
 from tqdm import tqdm
 
 start = time.time()
-
-filename = 'data/test.csv'
+today = date.today()
+filename = f'data/{today}.csv'
 
 url = 'https://hacker-news.firebaseio.com/v0/topstories.json'
 response = requests.get(url)
@@ -48,5 +48,5 @@ def get_attributes(d, article_id):
 articles()
 
 finish = time.time()
-mins = round((finish - start)/60, 2)
-print(f"\nTotal time taken {mins} minutes.")
+secs = round((finish - start), 2)
+print(f"\nTotal time taken {secs}s.")
